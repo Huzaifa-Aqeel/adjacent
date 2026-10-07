@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     latencyMs: 0, resultCount: 0, at: new Date().toISOString(),
   }];
   try {
-    const found = await findPlaces(seeds.map(seed => seed.id));
+    const found = await findPlaces(seeds.map(seed => seed.id), parsed.data.city);
     trace.push(found.trace);
     const places = found.items.map(normalizePlace).filter((place): place is NonNullable<typeof place> => place !== null);
     // Until a Places provider is configured, locality/hours/price/diet cannot be checked.

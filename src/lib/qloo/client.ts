@@ -18,7 +18,8 @@ function results(body: unknown): JsonObject[] {
   const root = object(body);
   if (!root) return [];
   const data = object(root.data);
-  const candidates = [root.results, root.entities, data?.results, data?.entities];
+  const nestedResults = object(root.results);
+  const candidates = [root.results, nestedResults?.entities, nestedResults?.tags, root.entities, data?.results, data?.entities];
   const list = candidates.find(Array.isArray);
   return Array.isArray(list) ? list.map(object).filter((item): item is JsonObject => item !== null) : [];
 }
@@ -31,8 +32,11 @@ export function normalizeSeed(raw: JsonObject): Seed | null {
   const id = text(raw.id) ?? text(raw.entity_id) ?? text(raw.urn);
   const name = text(raw.name) ?? text(raw.title);
   if (!id || !name) return null;
-  const type = text(raw.type) ?? text(raw.entity_type) ?? "unknown";
-  const image = text(raw.image) ?? text(object(raw.properties)?.image) ?? text(object(raw.properties)?.image_url);
+  const type = text(raw.subtype) ?? text(raw.type) ?? text(raw.entity_type) ?? "unknown";
+  const properties = object(raw.properties);
+  const images = properties?.images;
+  const firstImage = Array.isArray(images) ? object(images[0]) : null;
+  const image = text(raw.image) ?? text(properties?.image) ?? text(properties?.image_url) ?? text(firstImage?.url);
   return { id, name, type, ...(image ? { image } : {}) };
 }
 
@@ -84,10 +88,11 @@ export async function searchEntities(query: string): Promise<{ seeds: Seed[]; tr
   return { seeds: found.items.map(normalizeSeed).filter((seed): seed is Seed => seed !== null), trace: found.trace };
 }
 
-export async function findPlaces(seedIds: string[]): Promise<QlooResult> {
+export async function findPlaces(seedIds: string[], city?: string): Promise<QlooResult> {
   return qlooGet("insights", "/v2/insights", {
     "filter.type": "urn:entity:place",
     "signal.interests.entities": seedIds.join(","),
+    ...(city ? { "filter.location.query": city } : {}),
     take: "12",
   }, 5000);
 }

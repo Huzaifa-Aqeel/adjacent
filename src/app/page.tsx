@@ -5,9 +5,9 @@ import type { PlanResponse, Seed, TraceEntry } from "@/lib/types";
 
 type Screen = "home" | "taste" | "goal" | "plan";
 const examples = [
-  { name: "Diego", subtitle: "Late-night music · energy drink reset", seeds: ["Death Grips", "Blade Runner 2049", "Condesa"] },
-  { name: "Maya", subtitle: "Indie cinema · eat better", seeds: ["A24", "Phoebe Bridgers", "Brooklyn"] },
-  { name: "Noor", subtitle: "Bookshops · move more", seeds: ["Haruki Murakami", "Radiohead", "London"] },
+  { name: "Diego", subtitle: "Late-night music · energy drink reset", seeds: [{ name: "Death Grips", type: "artist" }, { name: "Blade Runner 2049", type: "movie" }, { name: "Red Bull", type: "brand" }] },
+  { name: "Maya", subtitle: "Indie cinema · eat better", seeds: [{ name: "A24", type: "brand" }, { name: "Phoebe Bridgers", type: "artist" }, { name: "Brooklyn", type: "place" }] },
+  { name: "Noor", subtitle: "Bookshops · move more", seeds: [{ name: "Haruki Murakami", type: "author" }, { name: "Radiohead", type: "artist" }, { name: "London", type: "place" }] },
 ];
 
 export default function Home() {
@@ -58,14 +58,15 @@ export default function Home() {
     const names = examples[index].seeds;
     const selected: Seed[] = [];
     try {
-      for (const name of names) {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(name)}`);
+      for (const wanted of names) {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(wanted.name)}`);
         const data = await response.json();
-        if (data.seeds?.[0]) selected.push(data.seeds[0]);
+        const exact = (data.seeds as Seed[] | undefined)?.find(seed => seed.name.toLowerCase() === wanted.name.toLowerCase() && seed.type.endsWith(`:${wanted.type}`));
+        if (exact) selected.push(exact);
         if (data.trace) setTrace(current => [...current, data.trace]);
       }
       setSeeds(selected);
-      if (selected.length === 0) setNotice("The taste graph is taking a breath. Nothing lost — Retry.");
+      if (selected.length < names.length) setNotice("Some persona signals need a closer match. Add them with search before continuing.");
     } catch { setNotice("The taste graph is taking a breath. Nothing lost — Retry."); }
     setBusy(false);
   }
